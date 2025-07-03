@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Facturación PWA</title>
+    <meta name="description" content="Sistema de facturación de productos con soporte offline">
+    <meta name="theme-color" content="#4CAF50">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="icons/favicon.ico">
+    <!-- iOS support -->
+    <link rel="apple-touch-icon" href="icons/icon-152x152.png">
+    <meta name="apple-mobile-web-app-status-bar" content="#4CAF50">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+</head>
+<body>
+    <div id="connection-status"></div>
+    <div class="offline-message">
+        Estás trabajando en modo offline. Los cambios se sincronizarán cuando recuperes la conexión.
+    </div>
+    
+    <header>
+        <h1>Sistema de Facturación</h1>
+    </header>
+    
+    <main>
+        <section id="app-container">
+            <clientes-component></clientes-component>
+            <productos-component></productos-component>
+            <facturacion-component></facturacion-component>
+        </section>
+    </main>
+
+    <script src="js/main.js"></script>
+    <script src="js/components/clientes-component.js"></script>
+    <script src="js/components/productos-component.js"></script>
+    <script src="js/components/facturacion-component.js"></script>
+    
+    <script>
+        // Registro del Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(registration => {
+                        console.log('ServiceWorker registrado con éxito:', registration.scope);
+                    })
+                    .catch(err => {
+                        console.error('Error al registrar ServiceWorker:', err);
+                    });
+            });
+        }
+    </script>
+</body>
+</html>
