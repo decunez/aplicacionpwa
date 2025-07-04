@@ -5,13 +5,13 @@ class FacturacionComponent extends HTMLElement {
         this.clientes = JSON.parse(localStorage.getItem('clientes')) || [];
         this.productos = JSON.parse(localStorage.getItem('productos')) || [];
         this.productosSeleccionados = [];
+        this.editingId = null;
     }
 
     connectedCallback() {
         this.render();
         this.setupEventListeners();
         
-        // Escuchar eventos de actualización
         document.addEventListener('clientesActualizados', () => {
             this.clientes = JSON.parse(localStorage.getItem('clientes')) || [];
             this.updateClienteSelect();
@@ -61,6 +61,7 @@ class FacturacionComponent extends HTMLElement {
                         <p>Subtotal: $<span id="subtotal">0.00</span></p>
                         <p>Total: $<span id="total">0.00</span></p>
                         <button id="generar-factura">Generar Factura</button>
+                        <button id="cancel-factura" class="cancel-button" style="display: none;">Cancelar Edición</button>
                     </div>
                 </div>
                 
@@ -82,7 +83,15 @@ class FacturacionComponent extends HTMLElement {
         });
         
         this.querySelector('#generar-factura').addEventListener('click', () => {
-            this.generarFactura();
+            if (this.editingId) {
+                this.actualizarFactura();
+            } else {
+                this.generarFactura();
+            }
+        });
+        
+        this.querySelector('#cancel-factura').addEventListener('click', () => {
+            this.cancelEdit();
         });
     }
 
@@ -137,7 +146,6 @@ class FacturacionComponent extends HTMLElement {
             </tr>
         `).join('');
         
-        // Agregar event listeners a los botones de eliminar
         this.querySelectorAll('.eliminar-producto').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const id = e.target.getAttribute('data-id');
@@ -151,7 +159,7 @@ class FacturacionComponent extends HTMLElement {
 
     calcularTotales() {
         const subtotal = this.productosSeleccionados.reduce((sum, producto) => sum + producto.subtotal, 0);
-        const total = subtotal; // Aquí podrías agregar impuestos si fuera necesario
+        const total = subtotal;
         
         this.querySelector('#subtotal').textContent = subtotal.toFixed(2);
         this.querySelector('#total').textContent = total.toFixed(2);
@@ -159,7 +167,7 @@ class FacturacionComponent extends HTMLElement {
 
     generarFactura() {
         if (this.productosSeleccionados.length === 0) {
-            alert('Debe agregar al menos un producto a la factura');
+            this.showNotification('Debe agregar al menos un producto a la factura', 'error');
             return;
         }
         
@@ -167,7 +175,7 @@ class FacturacionComponent extends HTMLElement {
         const cliente = this.clientes.find(c => c.id === clienteId);
         
         if (!cliente) {
-            alert('Seleccione un cliente válido');
+            this.showNotification('Seleccione un cliente válido', 'error');
             return;
         }
         
@@ -188,11 +196,78 @@ class FacturacionComponent extends HTMLElement {
         };
         
         this.facturas.push(nuevaFactura);
-        localStorage.setItem('facturas', JSON.stringify(this.facturas));
+        this.saveFacturas();
         
+        this.resetFactura();
+        this.showNotification('Factura generada con éxito', 'success');
+    }
+
+    editarFactura(id) {
+        const factura = this.facturas.find(f => f.id === id);
+        if (!factura) return;
+        
+        this.editingId = id;
+        this.querySelector('#cliente-select').value = factura.clienteId;
+        this.productosSeleccionados = factura.productos.map(p => ({
+            id: p.idProducto,
+            nombre: p.nombre,
+            cantidad: p.cantidad,
+            precio: p.precioUnitario,
+            subtotal: p.subtotal
+        }));
+        
+        this.updateProductosFactura();
+        this.querySelector('#generar-factura').textContent = 'Actualizar Factura';
+        this.querySelector('#cancel-factura').style.display = 'inline-block';
+    }
+
+    actualizarFactura() {
+        const facturaIndex = this.facturas.findIndex(f => f.id === this.editingId);
+        if (facturaIndex === -1) return;
+        
+        const clienteId = this.querySelector('#cliente-select').value;
+        const cliente = this.clientes.find(c => c.id === clienteId);
+        
+        this.facturas[facturaIndex] = {
+            id: this.editingId,
+            clienteId: cliente.id,
+            clienteNombre: cliente.nombre,
+            productos: this.productosSeleccionados.map(p => ({
+                idProducto: p.id,
+                nombre: p.nombre,
+                cantidad: p.cantidad,
+                precioUnitario: p.precio,
+                subtotal: p.subtotal
+            })),
+            subtotal: parseFloat(this.querySelector('#subtotal').textContent),
+            total: parseFloat(this.querySelector('#total').textContent),
+            fecha: this.facturas[facturaIndex].fecha
+        };
+        
+        this.saveFacturas();
+        this.resetFactura();
+        this.showNotification('Factura actualizada con éxito', 'success');
+    }
+
+    eliminarFactura(id) {
+        if (confirm('¿Está seguro que desea eliminar esta factura?')) {
+            this.facturas = this.facturas.filter(f => f.id !== id);
+            this.saveFacturas();
+            this.showNotification('Factura eliminada con éxito', 'success');
+        }
+    }
+
+    cancelEdit() {
+        this.editingId = null;
+        this.resetFactura();
+        this.querySelector('#generar-factura').textContent = 'Generar Factura';
+        this.querySelector('#cancel-factura').style.display = 'none';
+    }
+
+    resetFactura() {
         this.productosSeleccionados = [];
         this.updateProductosFactura();
-        this.updateFacturasList();
+        this.querySelector('#producto-cantidad').value = 1;
     }
 
     updateFacturasList() {
@@ -203,7 +278,11 @@ class FacturacionComponent extends HTMLElement {
                 <p><strong>Cliente:</strong> ${factura.clienteNombre}</p>
                 <p><strong>Fecha:</strong> ${factura.fecha}</p>
                 <p><strong>Total:</strong> $${factura.total.toFixed(2)}</p>
-                <button class="ver-detalle" data-id="${factura.id}">Ver Detalle</button>
+                <div class="factura-actions">
+                    <button class="ver-detalle" data-id="${factura.id}">Ver Detalle</button>
+                    <button class="edit-button" data-id="${factura.id}">Editar</button>
+                    <button class="delete-button" data-id="${factura.id}">Eliminar</button>
+                </div>
                 <div class="detalle-factura" id="detalle-${factura.id}" style="display:none;">
                     <h5>Detalle de Factura</h5>
                     <ul>
@@ -215,7 +294,6 @@ class FacturacionComponent extends HTMLElement {
             </div>
         `).join('');
         
-        // Agregar event listeners a los botones de ver detalle
         this.querySelectorAll('.ver-detalle').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const id = e.target.getAttribute('data-id');
@@ -223,6 +301,31 @@ class FacturacionComponent extends HTMLElement {
                 detalle.style.display = detalle.style.display === 'none' ? 'block' : 'none';
             });
         });
+        
+        this.querySelectorAll('.edit-button').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                this.editarFactura(e.target.getAttribute('data-id'));
+            });
+        });
+        
+        this.querySelectorAll('.delete-button').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                this.eliminarFactura(e.target.getAttribute('data-id'));
+            });
+        });
+    }
+
+    saveFacturas() {
+        localStorage.setItem('facturas', JSON.stringify(this.facturas));
+        this.updateFacturasList();
+    }
+
+    showNotification(message, type) {
+        const notification = document.createElement('div');
+        notification.className = `notification ${type}`;
+        notification.textContent = message;
+        document.body.appendChild(notification);
+        setTimeout(() => notification.remove(), 3000);
     }
 }
 
