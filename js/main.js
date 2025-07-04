@@ -1,17 +1,3 @@
-/**
- * Archivo principal del Sistema de Facturación PWA
- * Contiene la lógica de inicialización y funciones auxiliares
- */
-
-// Datos de ejemplo para inicialización
-const sampleClientes = [
-    { id: "1", nombre: "Cliente Demo", cedula: "9999999999", direccion: "Dirección de ejemplo" }
-];
-
-const sampleProductos = [
-    { id: "1", nombre: "Producto Demo", codigo: "PROD001", precio: 10.50 }
-];
-
 // Función para inicializar la aplicación
 function initApp() {
     console.log("Sistema de Facturación PWA inicializado");
@@ -21,28 +7,6 @@ function initApp() {
     setupGlobalEvents();
     setupOnlineStatus();
     setupPWAInstallPrompt();
-}
-
-// Verificar y cargar datos iniciales
-function checkInitialData() {
-    if (!localStorage.getItem('clientes')) {
-        localStorage.setItem('clientes', JSON.stringify(sampleClientes));
-        console.log("Datos de clientes inicializados");
-    }
-    
-    if (!localStorage.getItem('productos')) {
-        localStorage.setItem('productos', JSON.stringify(sampleProductos));
-        console.log("Datos de productos inicializados");
-    }
-    
-    if (!localStorage.getItem('facturas')) {
-        localStorage.setItem('facturas', JSON.stringify([]));
-    }
-}
-
-// Cargar componentes
-function loadComponents() {
-    // Los componentes se cargan automáticamente mediante los scripts en el HTML
 }
 
 // Configurar eventos globales
