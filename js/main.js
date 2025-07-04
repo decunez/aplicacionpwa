@@ -2,8 +2,6 @@
 function initApp() {
     console.log("Sistema de Facturación PWA inicializado");
     
-    checkInitialData();
-    loadComponents();
     setupGlobalEvents();
     setupOnlineStatus();
     setupPWAInstallPrompt();
